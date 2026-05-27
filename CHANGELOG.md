@@ -1,3 +1,6 @@
+## [0.1.1] — 2026-05-27
+### Changed
+[0.1.1]: https://github.com/bambash/random-respawn-java/releases/tag/v0.1.1
 # Changelog
 
 All notable changes to this project will be documented in this file.
