@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse semver from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Write version into pack.mcmeta
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          jq --arg v "$VERSION" '.pack.version = $v' pack.mcmeta > pack.tmp.json && mv pack.tmp.json pack.mcmeta
+
+      - name: Generate .zip
+        id: pack
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PACK_NAME="RandomRespawn-v${VERSION}"
+          zip -r "${PACK_NAME}.zip" pack.mcmeta data/
+          echo "pack_file=${PACK_NAME}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.version }}"
+          body: |
+            ## Random Respawn v${{ steps.version.outputs.version }}
+
+            ### Installation
+            1. Download `${{ steps.pack.outputs.pack_file }}`
+            2. Place it in your world's `datapacks/` folder
+            3. Run `/reload` in-game or restart the server
+
+            ### Requirements
+            - Minecraft Java Edition 1.20.2+ (for function macros and `/random value`)
+            - Compatible with GeyserMC — Bedrock clients work transparently
+
+            ### How it works
+            On death respawn (not initial join), you are teleported to a random location
+            up to 20,000 blocks from the world origin at Y=319 with Resistance V for 8 seconds.
+          files: |
+            ${{ steps.pack.outputs.pack_file }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

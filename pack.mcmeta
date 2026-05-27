@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "pack_format": 101,
+    "supported_formats": [18, 101],
+    "version": "0.1.0",
+    "description": "Random Respawn - teleports players to a random location on death respawn"
+  }
+}

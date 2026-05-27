@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate pack.mcmeta structure
+        run: |
+          echo "=== Checking pack.mcmeta exists ==="
+          test -f pack.mcmeta || { echo "ERROR: pack.mcmeta missing"; exit 1; }
+          echo "=== Checking valid JSON ==="
+          jq . pack.mcmeta > /dev/null || { echo "ERROR: invalid JSON"; exit 1; }
+          echo "=== Checking pack_format ==="
+          jq -e '.pack.pack_format' pack.mcmeta > /dev/null || { echo "ERROR: pack.pack_format missing"; exit 1; }
+          echo "=== Checking description ==="
+          jq -e '.pack.description' pack.mcmeta > /dev/null || { echo "ERROR: pack.description missing"; exit 1; }
+          echo "=== Checking version ==="
+          jq -e '.pack.version' pack.mcmeta > /dev/null || { echo "ERROR: pack.version missing"; exit 1; }
+
+      - name: Validate datapack directory structure
+        run: |
+          echo "=== Checking data/random_respawn/function/ exists ==="
+          test -d data/random_respawn/function || { echo "ERROR: data/random_respawn/function/ missing"; exit 1; }
+          echo "=== Checking tags/function/ exists ==="
+          test -d data/random_respawn/tags/function || { echo "ERROR: data/random_respawn/tags/function/ missing"; exit 1; }
+
+      - name: Validate function files
+        run: |
+          for f in load tick respawn teleport; do
+            echo "=== Checking function/$f.mcfunction ==="
+            test -f "data/random_respawn/function/$f.mcfunction" || { echo "ERROR: $f.mcfunction missing"; exit 1; }
+            test -s "data/random_respawn/function/$f.mcfunction" || { echo "ERROR: $f.mcfunction is empty"; exit 1; }
+          done
+
+      - name: Validate tag files
+        run: |
+          for tag in load tick; do
+            echo "=== Checking tags/function/$tag.json ==="
+            test -f "data/random_respawn/tags/function/$tag.json" || { echo "ERROR: tags/function/$tag.json missing"; exit 1; }
+            jq . "data/random_respawn/tags/function/$tag.json" > /dev/null || { echo "ERROR: $tag.json invalid JSON"; exit 1; }
+          done
+
+      - name: Check for required files
+        run: |
+          echo "=== Checking README.md ==="
+          test -f README.md || echo "WARNING: README.md missing"
+
+      - name: Validate zip build (dry run)
+        run: |
+          VERSION=$(jq -r '.pack.version' pack.mcmeta)
+          PACK_NAME="RandomRespawn-v${VERSION}"
+          zip -r "/tmp/${PACK_NAME}.zip" pack.mcmeta data/
+          echo "=== zip build successful ==="
+          unzip -l "/tmp/${PACK_NAME}.zip"
